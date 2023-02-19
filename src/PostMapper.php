@@ -2,6 +2,7 @@
 
 namespace Adaurum;
 
+use Exception;
 use PDO;
 
 class PostMapper
@@ -22,5 +23,15 @@ class PostMapper
 
         $result = $statement->fetchAll();
         return array_shift($result);
+    }
+
+    public function getList(string $direction): ?array
+    {
+        if (!in_array($direction, ['DESC', 'ASC'])) {
+            throw new Exception('The direction is not supported.');
+        }
+        $statement = $this->connection->prepare('SELECT * FROM post ORDER BY published_date ' . $direction);
+        $statement->execute();
+        return $statement->fetchAll();
     }
 }
