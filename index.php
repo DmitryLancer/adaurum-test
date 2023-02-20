@@ -2,6 +2,7 @@
 
 use Adaurum\LatestPosts;
 use Adaurum\Slim\TwigMiddleware;
+use DI\ContainerBuilder;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -11,8 +12,12 @@ use Adaurum\PostMapper;
 
 require __DIR__ . '/vendor/autoload.php';
 
-$loader = new FilesystemLoader('templates');
-$view = new Environment($loader);
+$builder = new ContainerBuilder();
+$builder->addDefinitions('config/di.php');
+
+$container = $builder->build();
+
+AppFactory::setContainer($container);
 
 $config = include 'config/database.php';
 $dsn = $config['dsn'];
@@ -33,11 +38,12 @@ try {
 
 $app = AppFactory::create();
 
+$view = $container->get(Environment::class);
 $app->add(new TwigMiddleware($view));
 
 $app->get('/', function (Request $request, Response $response) use ($view, $connection) {
     $latestPosts = new LatestPosts($connection);
-    $posts = $latestPosts->get(3);
+    $posts = $latestPosts->get(4);
 
     $body = $view->render('index.twig', [
         'posts'=>$posts
@@ -55,13 +61,19 @@ $app->get('/about', function (Request $request, Response $response) use ($view) 
 });
 
 $app->get('/blog[/{page}]', function (Request $request, Response $response) use ($view, $connection) {
-    $latestPosts = new PostMapper($connection);
+    $postMapper = new PostMapper($connection);
 
     $page = isset($args['page']) ? (int) $args['page'] : 1;
     $limit = 2;
-    $posts = $latestPosts->getList($page, $limit, 'DESC');
+    $posts = $postMapper->getList($page, $limit, 'DESC');
+
+    $totalCount = $postMapper->getTotalCount();
     $body = $view->render('blog.twig', [
-        'posts'=>$posts
+        'posts'=>$posts,
+        'pagination' => [
+            'current' => $page,
+            'paging'=> ceil($totalCount / $limit),
+        ],
     ]);
     $response->getBody()->write($body);
     return $response;
