@@ -1,6 +1,7 @@
 <?php
 
 use Adaurum\LatestPosts;
+use Adaurum\Slim\TwigMiddleware;
 use Psr\Http\Message\ResponseInterface as Response;
 use Psr\Http\Message\ServerRequestInterface as Request;
 use Slim\Factory\AppFactory;
@@ -32,9 +33,11 @@ try {
 
 $app = AppFactory::create();
 
+$app->add(new TwigMiddleware($view));
+
 $app->get('/', function (Request $request, Response $response) use ($view, $connection) {
     $latestPosts = new LatestPosts($connection);
-    $posts = $latestPosts->get(2);
+    $posts = $latestPosts->get(3);
 
     $body = $view->render('index.twig', [
         'posts'=>$posts
